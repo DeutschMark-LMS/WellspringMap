@@ -1,0 +1,383 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>Wellspring University — Interactive Campus Web Map</title>
+  <meta name="description" content="Production-ready interactive campus navigation map and building directory for Wellspring University." />
+
+  <!-- Google Fonts: Inter & Outfit -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@500;600;700;800&display=swap" rel="stylesheet" />
+
+  <!-- Leaflet CSS (v1.9.4) -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
+
+  <!-- Application Stylesheets -->
+  <link rel="stylesheet" href="css/style.css" />
+  <link rel="stylesheet" href="css/components.css" />
+</head>
+<body class="theme-light">
+  <div class="app-layout" id="appLayout">
+    <!-- Mobile Sidebar Backdrop Overlay -->
+    <div class="sidebar-backdrop" id="sidebarBackdrop"></div>
+
+    <!-- Sidebar / Directory Panel -->
+    <aside class="sidebar" id="sidebar" aria-label="Campus Directory">
+
+      <!-- Sidebar Header -->
+      <header class="sidebar-header" id="sidebarHeader">
+        <div class="brand-row">
+          <div class="brand-logo" aria-hidden="true">
+            <i data-lucide="compass"></i>
+          </div>
+          <div class="brand-text">
+            <h1 class="brand-title">Wellspring</h1>
+            <span class="brand-subtitle">Interactive Campus Map</span>
+          </div>
+          <button class="sidebar-close-btn" id="sidebarCloseBtn" title="Close Directory" aria-label="Close directory sidebar">
+            <i data-lucide="x"></i>
+          </button>
+        </div>
+
+        <!-- Search Bar -->
+        <div class="search-container">
+          <div class="search-input-wrapper">
+            <i data-lucide="search" class="search-icon" aria-hidden="true"></i>
+            <input 
+              type="text" 
+              id="searchInput" 
+              class="search-input" 
+              placeholder="Search buildings, codes, amenities..." 
+              autocomplete="off"
+              spellcheck="false"
+              aria-label="Search campus buildings and facilities"
+            />
+            <button id="searchClearBtn" class="search-clear-btn" title="Clear search" aria-label="Clear search input">
+              <i data-lucide="x-circle"></i>
+            </button>
+            <kbd class="search-shortcut-hint" title="Press / to search">/</kbd>
+          </div>
+        </div>
+
+        <!-- Category Filters (Horizontal Scrollable Chips) -->
+        <nav class="category-filters-nav" aria-label="Filter landmarks by category">
+          <div class="category-chips-list" id="categoryChipsList" role="tablist">
+            <button class="filter-chip active" data-category="all" role="tab" aria-selected="true">
+              <i data-lucide="layout-grid"></i>
+              <span>All</span>
+              <span class="chip-count" id="count-all">0</span>
+            </button>
+            <!-- Generated dynamically or populated via script -->
+          </div>
+        </nav>
+      </header>
+
+      <!-- Landmark Directory List -->
+      <main class="sidebar-content" id="sidebarContent">
+        <div class="directory-results-header">
+          <span class="results-count-text" id="resultsCountText">Showing all locations</span>
+          <button class="sort-reset-btn" id="resetFiltersBtn" style="display: none;">Reset</button>
+        </div>
+
+        <div class="poi-list" id="poiList" role="region" aria-live="polite">
+          <!-- POI Cards injected by search.js -->
+        </div>
+
+        <!-- Empty State -->
+        <div class="empty-state" id="emptyState" style="display: none;">
+          <div class="empty-icon-wrapper">
+            <i data-lucide="map-pin-off"></i>
+          </div>
+          <h3>No locations found</h3>
+          <p>Try searching by building name, code (e.g. SCI-01), or amenity (e.g. Wi-Fi, Restrooms).</p>
+          <button class="btn btn-secondary" id="clearSearchStateBtn">Clear Filters</button>
+        </div>
+      </main>
+
+      <!-- Sidebar Footer -->
+      <footer class="sidebar-footer">
+        <button class="btn btn-survey-outline btn-sidebar-export" id="sidebarExportBtn" title="Export current campus dataset to data.js">
+          <i data-lucide="download"></i>
+          <span>Download data.js</span>
+        </button>
+        <div class="footer-info">
+          <i data-lucide="shield-alert" class="emergency-icon"></i>
+          <div class="footer-text">
+            <span>Campus Security & Emergency</span>
+            <strong>Ext. 4911 / (052) 800-911</strong>
+          </div>
+        </div>
+      </footer>
+    </aside>
+
+    <!-- Mobile Drawer Pull Handle (Visible on small screens) -->
+    <button class="mobile-drawer-toggle" id="mobileDrawerToggle" aria-label="Toggle directory sheet">
+      <div class="drawer-handle-bar"></div>
+      <div class="drawer-peek-label">
+        <i data-lucide="menu"></i>
+        <span>Campus Directory</span>
+      </div>
+    </button>
+
+    <!-- Map Canvas Container -->
+    <div class="map-container" id="mapContainer">
+      <div id="map" class="map-canvas" role="application" aria-label="Campus interactive map"></div>
+
+      <!-- Top Map Controls Bar -->
+      <div class="map-top-bar">
+        <button class="sidebar-open-btn" id="sidebarOpenBtn" title="Open Directory" aria-label="Open directory panel">
+          <i data-lucide="menu"></i>
+          <span class="btn-text">Directory</span>
+        </button>
+
+        <!-- Layer Switcher Dropdown Toggle -->
+        <div class="layer-control-wrapper">
+          <button class="map-control-btn layer-dropdown-btn" id="layerDropdownBtn" title="Map Layers" aria-expanded="false" aria-haspopup="true">
+            <i data-lucide="layers"></i>
+            <span class="btn-label">Street</span>
+          </button>
+          <div class="layer-dropdown-menu" id="layerDropdownMenu" role="menu">
+            <button class="layer-option-btn active" data-layer="street" role="menuitem">
+              <i data-lucide="map"></i>
+              <span>Street View</span>
+            </button>
+            <button class="layer-option-btn" data-layer="satellite" role="menuitem">
+              <i data-lucide="satellite"></i>
+              <span>Satellite</span>
+            </button>
+            <button class="layer-option-btn" data-layer="dark" role="menuitem">
+              <i data-lucide="moon"></i>
+              <span>Dark Mode</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Navigation & Route HUD (Visible when navigation active) -->
+      <div class="route-hud" id="routeHud" style="display: none;" role="status">
+        <div class="route-hud-header">
+          <div class="route-hud-icon">
+            <i data-lucide="footprints"></i>
+          </div>
+          <div class="route-hud-info">
+            <span class="route-target-label">Walking to</span>
+            <h4 class="route-target-name" id="routeTargetName">Building Name</h4>
+          </div>
+          <button class="route-close-btn" id="routeCloseBtn" title="Cancel Route" aria-label="Cancel walking route">
+            <i data-lucide="x"></i>
+          </button>
+        </div>
+        <div class="route-hud-stats">
+          <div class="stat-pill">
+            <i data-lucide="ruler"></i>
+            <span id="routeDistance">0 m</span>
+          </div>
+          <div class="stat-pill">
+            <i data-lucide="clock"></i>
+            <span id="routeDuration">0 min walk</span>
+          </div>
+          <div class="stat-pill user-loc-status" id="routeOriginStatus" title="Route Origin">
+            <i data-lucide="navigation"></i>
+            <span id="routeOriginLabel">From: Campus Quad</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Floating Map Action Buttons (Bottom Right) -->
+      <div class="map-floating-actions">
+        <!-- Campus Perimeter / Center Reset -->
+        <button class="floating-btn" id="recenterBtn" title="Fit Campus Boundaries" aria-label="Recenter campus view">
+          <i data-lucide="scan"></i>
+        </button>
+
+        <!-- Toggle Perimeter Boundary Highlight -->
+        <button class="floating-btn active" id="togglePerimeterBtn" title="Toggle Campus Boundary" aria-label="Toggle boundary outline">
+          <i data-lucide="square-dashed-bottom-code"></i>
+        </button>
+
+        <!-- Developer Coordinate Inspector Toggle -->
+        <button class="floating-btn fab-dev" id="devModeBtn" title="Toggle Coordinate Inspector (Dev Mode)" aria-label="Toggle coordinate picker">
+          <i data-lucide="map-pin-plus"></i>
+        </button>
+
+        <!-- Geolocation Floating Action Button -->
+        <button class="floating-btn fab-locate" id="locateMeBtn" title="Find My Location" aria-label="Find current location">
+          <i data-lucide="crosshair"></i>
+          <span class="pulse-ring"></span>
+        </button>
+      </div>
+
+      <!-- Dev Mode Coordinate Inspector HUD (Bottom Floating Panel) -->
+      <div class="coord-inspector-panel" id="coordInspectorPanel" style="display: none;" role="region" aria-label="Coordinate Picker">
+        <div class="coord-inspector-header">
+          <div class="coord-inspector-title">
+            <span class="dev-badge">DEV MODE</span>
+            <span>Coordinate Inspector</span>
+          </div>
+          <button class="coord-inspector-close" id="closeInspectorBtn" title="Exit Dev Mode">
+            <i data-lucide="x"></i>
+          </button>
+        </div>
+        <div class="coord-inspector-content">
+          <div class="coord-readout-row">
+            <div class="coord-field">
+              <span class="coord-field-label">Latitude</span>
+              <input type="text" id="inspectorLat" class="coord-val-input" readonly value="Click map to pick..." />
+            </div>
+            <div class="coord-field">
+              <span class="coord-field-label">Longitude</span>
+              <input type="text" id="inspectorLng" class="coord-val-input" readonly value="Click map to pick..." />
+            </div>
+          </div>
+          <div class="coord-actions-row">
+            <button class="btn btn-primary btn-sm" id="copyCoordsBtn" disabled>
+              <i data-lucide="copy"></i>
+              <span>Copy [lat, lng]</span>
+            </button>
+            <button class="btn btn-secondary btn-sm" id="copyPoiSnippetBtn" disabled>
+              <i data-lucide="code-2"></i>
+              <span>Generate POI Snippet</span>
+            </button>
+          </div>
+          <div class="coord-actions-row">
+            <button class="btn btn-survey-primary" id="launchSurveyorFromDevBtn" style="flex:1.2;">
+              <i data-lucide="footprints"></i>
+              <span>Live GPS Surveyor</span>
+            </button>
+            <button class="btn btn-survey-outline" id="inspectorExportBtn" style="flex:0.8;">
+              <i data-lucide="download"></i>
+              <span>Download data.js</span>
+            </button>
+          </div>
+          <div class="coord-tip-text">
+            <i data-lucide="mouse-pointer-click"></i>
+            <span>Click or drag marker on map to pinpoint building entrances</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Map Legend Toast (Collapsible bottom-left) -->
+      <div class="map-legend" id="mapLegend">
+        <div class="legend-header" id="legendToggleBtn">
+          <span class="legend-title"><i data-lucide="info"></i> Legend</span>
+          <i data-lucide="chevron-up" class="legend-arrow"></i>
+        </div>
+        <div class="legend-body" id="legendBody">
+          <!-- Populated by JavaScript -->
+        </div>
+      </div>
+    </div>
+
+    <!-- Building Detail Drawer / Modal Panel -->
+    <div class="detail-drawer" id="detailDrawer" aria-hidden="true" role="dialog" aria-labelledby="detailDrawerTitle">
+      <div class="detail-drawer-backdrop" id="detailDrawerBackdrop"></div>
+      <div class="detail-drawer-panel" id="detailDrawerPanel">
+        <!-- Mobile Bottom Sheet Drag Handle for Drawer -->
+        <div class="sheet-drag-handle drawer-drag-handle" id="detailDragHandle" aria-hidden="true">
+          <div class="drag-indicator-bar"></div>
+        </div>
+
+        <button class="detail-close-btn" id="detailCloseBtn" aria-label="Close building details">
+          <i data-lucide="x"></i>
+        </button>
+
+        <div class="detail-hero-image-wrapper">
+          <img src="" alt="" id="detailImage" class="detail-hero-image" />
+          <div class="detail-hero-overlay"></div>
+          <div class="detail-category-badge" id="detailCategoryBadge">Academic</div>
+          <span class="detail-code-badge" id="detailCodeBadge">SCI-01</span>
+        </div>
+
+        <div class="detail-body">
+          <div class="detail-header-info">
+            <h2 class="detail-title" id="detailDrawerTitle">Building Name</h2>
+            <div class="detail-status-row">
+              <div class="status-indicator-badge" id="detailStatusBadge">
+                <span class="status-dot"></span>
+                <span id="detailStatusText">Open</span>
+              </div>
+              <div class="detail-hours-text">
+                <i data-lucide="clock"></i>
+                <span id="detailHours">8:00 AM – 8:00 PM</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Quick Action Buttons -->
+          <div class="detail-action-bar">
+            <button class="btn btn-primary" id="detailDirectionsBtn">
+              <i data-lucide="footprints"></i>
+              <span>Get Directions</span>
+            </button>
+            <button class="btn btn-secondary" id="detailCenterBtn">
+              <i data-lucide="map-pin"></i>
+              <span>Focus Map</span>
+            </button>
+            <button class="btn btn-icon" id="detailShareBtn" title="Copy Location Link" aria-label="Copy location link">
+              <i data-lucide="share-2"></i>
+            </button>
+          </div>
+
+          <!-- Description -->
+          <div class="detail-section">
+            <h3 class="section-title">Overview</h3>
+            <p class="detail-description" id="detailDescription">Detailed description of this facility.</p>
+          </div>
+
+          <!-- Quick Facts Grid -->
+          <div class="detail-section">
+            <h3 class="section-title">Key Details</h3>
+            <div class="facts-grid">
+              <div class="fact-card">
+                <i data-lucide="layers" class="fact-icon"></i>
+                <div class="fact-content">
+                  <span class="fact-label">Floors</span>
+                  <span class="fact-value" id="detailFloors">4 Levels</span>
+                </div>
+              </div>
+              <div class="fact-card">
+                <i data-lucide="phone" class="fact-icon"></i>
+                <div class="fact-content">
+                  <span class="fact-label">Contact / Dept</span>
+                  <span class="fact-value" id="detailContact">Ext. 4101</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Facilities & Amenities -->
+          <div class="detail-section">
+            <h3 class="section-title">Facilities & Amenities</h3>
+            <div class="amenities-tags" id="detailAmenities">
+              <!-- Injected by script -->
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Notification Toast -->
+    <div class="toast-notification" id="toastNotification" role="alert" aria-live="assertive">
+      <div class="toast-icon"><i data-lucide="info"></i></div>
+      <span class="toast-message" id="toastMessage">Action completed</span>
+    </div>
+
+  </div>
+
+  <!-- Lucide Icons CDN -->
+  <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+  <!-- Leaflet.js CDN (v1.9.4) -->
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+
+  <!-- Application Modules -->
+  <script src="js/data.js"></script>
+  <script src="js/map.js"></script>
+  <script src="js/search.js"></script>
+  <script src="js/navigation.js"></script>
+  <script src="js/surveyor.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
+
