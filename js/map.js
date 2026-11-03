@@ -36,15 +36,24 @@ class CampusMap {
    * Initializes the Leaflet map instance and default layers
    */
   init() {
-    // 1. Create Leaflet map instance
+    // 1. Create Leaflet map instance with rotation & touch gestures enabled
     this.map = L.map('map', {
       center: CAMPUS_CONFIG.center,
       zoom: CAMPUS_CONFIG.defaultZoom,
       minZoom: CAMPUS_CONFIG.minZoom,
       maxZoom: CAMPUS_CONFIG.maxZoom,
       maxBounds: CAMPUS_CONFIG.maxBounds,
-      maxBoundsViscosity: 0.8,
-      zoomControl: true
+      maxBoundsViscosity: 0.6,
+      zoomControl: true,
+      rotate: true,
+      touchRotate: true,
+      rotateControl: false,
+      bearing: 0
+    });
+
+    // Listen for rotation events to synchronize compass UI in real-time
+    this.map.on('rotate', () => {
+      this.updateCompassUI();
     });
 
     // 2. Set default base tile layer (Street)
@@ -364,6 +373,88 @@ class CampusMap {
     if (this.devMarker) {
       this.map.removeLayer(this.devMarker);
       this.devMarker = null;
+    }
+  }
+
+  /**
+   * Sets map bearing angle in degrees
+   * @param {number} degrees
+   */
+  setBearing(degrees) {
+    if (this.map && typeof this.map.setBearing === 'function') {
+      this.map.setBearing(degrees);
+      this.updateCompassUI();
+    }
+  }
+
+  /**
+   * Gets current map bearing angle in degrees
+   * @returns {number}
+   */
+  getBearing() {
+    if (this.map && typeof this.map.getBearing === 'function') {
+      return this.map.getBearing();
+    }
+    return 0;
+  }
+
+  /**
+   * Resets map rotation to North (0 degrees)
+   */
+  resetNorth() {
+    if (this.map) {
+      if (typeof this.map.resetNorth === 'function') {
+        this.map.resetNorth();
+      } else if (typeof this.map.setBearing === 'function') {
+        this.map.setBearing(0);
+      }
+      this.updateCompassUI();
+    }
+  }
+
+  /**
+   * Rotates map by a delta angle (e.g. +30 deg or -30 deg)
+   * @param {number} deltaDegrees
+   */
+  rotateBy(deltaDegrees) {
+    const current = this.getBearing();
+    const target = Math.round((current + deltaDegrees + 360) % 360);
+    this.setBearing(target);
+  }
+
+  /**
+   * Synchronizes Compass needle and bearing badge with active map rotation
+   */
+  updateCompassUI() {
+    const bearing = this.getBearing();
+    const needle = document.getElementById('compassNeedle');
+    const label = document.getElementById('compassBearingLabel');
+    const btn = document.getElementById('compassBtn');
+
+    if (needle) {
+      // Rotate needle in reverse so red pointer continuously aims at true North
+      needle.style.transform = `rotate(${-bearing}deg)`;
+    }
+
+    if (label) {
+      const rounded = Math.round(((bearing % 360) + 360) % 360);
+      if (rounded === 0 || rounded === 360) {
+        label.textContent = 'N';
+      } else if (rounded === 90) {
+        label.textContent = 'E';
+      } else if (rounded === 180) {
+        label.textContent = 'S';
+      } else if (rounded === 270) {
+        label.textContent = 'W';
+      } else {
+        label.textContent = `${rounded}°`;
+      }
+    }
+
+    if (btn) {
+      const isRotated = Math.abs(bearing % 360) > 1.5;
+      btn.classList.toggle('rotated', isRotated);
+      btn.setAttribute('title', isRotated ? `Bearing: ${Math.round(bearing)}° (Tap to reset North)` : 'Map oriented North (Two fingers on phone to rotate)');
     }
   }
 }

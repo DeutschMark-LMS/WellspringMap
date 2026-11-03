@@ -191,6 +191,38 @@ class CampusApp {
     }
 
     // Map Action Controls
+    this.compassBtn = document.getElementById('compassBtn');
+    if (this.compassBtn) {
+      this.compassBtn.addEventListener('click', () => {
+        const currentBearing = this.mapManager.getBearing();
+        if (Math.abs(currentBearing % 360) > 1.5) {
+          this.mapManager.resetNorth();
+          this.showToast('Reset to North (0°)');
+        } else {
+          this.mapManager.rotateBy(45);
+          this.showToast('Rotated to 45°');
+        }
+      });
+    }
+
+    const rotateLeftBtn = document.getElementById('rotateLeftBtn');
+    if (rotateLeftBtn) {
+      rotateLeftBtn.addEventListener('click', () => {
+        this.mapManager.rotateBy(-30);
+        const b = Math.round(((this.mapManager.getBearing() % 360) + 360) % 360);
+        this.showToast(`Rotated to ${b}°`);
+      });
+    }
+
+    const rotateRightBtn = document.getElementById('rotateRightBtn');
+    if (rotateRightBtn) {
+      rotateRightBtn.addEventListener('click', () => {
+        this.mapManager.rotateBy(30);
+        const b = Math.round(((this.mapManager.getBearing() % 360) + 360) % 360);
+        this.showToast(`Rotated to ${b}°`);
+      });
+    }
+
     if (this.recenterBtn) {
       this.recenterBtn.addEventListener('click', () => {
         this.mapManager.fitCampusPerimeter();

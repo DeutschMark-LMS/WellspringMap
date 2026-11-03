@@ -132,25 +132,37 @@
           <span class="btn-text">Directory</span>
         </button>
 
-        <!-- Layer Switcher Dropdown Toggle -->
-        <div class="layer-control-wrapper">
-          <button class="map-control-btn layer-dropdown-btn" id="layerDropdownBtn" title="Map Layers" aria-expanded="false" aria-haspopup="true">
-            <i data-lucide="layers"></i>
-            <span class="btn-label">Street</span>
-          </button>
-          <div class="layer-dropdown-menu" id="layerDropdownMenu" role="menu">
-            <button class="layer-option-btn active" data-layer="street" role="menuitem">
-              <i data-lucide="map"></i>
-              <span>Street View</span>
+        <div class="map-top-right-group">
+          <!-- Step Rotation Buttons -->
+          <div class="rotate-btn-group" role="group" aria-label="Map Rotation Controls">
+            <button class="map-control-btn rotate-step-btn" id="rotateLeftBtn" title="Rotate left 30°" aria-label="Rotate map counter-clockwise">
+              <i data-lucide="rotate-ccw"></i>
             </button>
-            <button class="layer-option-btn" data-layer="satellite" role="menuitem">
-              <i data-lucide="satellite"></i>
-              <span>Satellite</span>
+            <button class="map-control-btn rotate-step-btn" id="rotateRightBtn" title="Rotate right 30°" aria-label="Rotate map clockwise">
+              <i data-lucide="rotate-cw"></i>
             </button>
-            <button class="layer-option-btn" data-layer="dark" role="menuitem">
-              <i data-lucide="moon"></i>
-              <span>Dark Mode</span>
+          </div>
+
+          <!-- Layer Switcher Dropdown Toggle -->
+          <div class="layer-control-wrapper">
+            <button class="map-control-btn layer-dropdown-btn" id="layerDropdownBtn" title="Map Layers" aria-expanded="false" aria-haspopup="true">
+              <i data-lucide="layers"></i>
+              <span class="btn-label">Street</span>
             </button>
+            <div class="layer-dropdown-menu" id="layerDropdownMenu" role="menu">
+              <button class="layer-option-btn active" data-layer="street" role="menuitem">
+                <i data-lucide="map"></i>
+                <span>Street View</span>
+              </button>
+              <button class="layer-option-btn" data-layer="satellite" role="menuitem">
+                <i data-lucide="satellite"></i>
+                <span>Satellite</span>
+              </button>
+              <button class="layer-option-btn" data-layer="dark" role="menuitem">
+                <i data-lucide="moon"></i>
+                <span>Dark Mode</span>
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -187,6 +199,18 @@
 
       <!-- Floating Map Action Buttons (Bottom Right) -->
       <div class="map-floating-actions">
+        <!-- Rotate / Compass Button -->
+        <button class="floating-btn fab-compass" id="compassBtn" title="Reset North (Two fingers on screen to rotate, or Shift+drag)" aria-label="Reset map rotation to North">
+          <div class="compass-needle-wrapper" id="compassNeedle">
+            <svg viewBox="0 0 24 24" class="compass-svg" fill="none">
+              <polygon points="12 3 15.5 12 8.5 12" fill="#ef4444" stroke="#dc2626" stroke-width="1" />
+              <polygon points="12 21 8.5 12 15.5 12" fill="#94a3b8" stroke="#64748b" stroke-width="1" />
+              <circle cx="12" cy="12" r="2" fill="#ffffff" stroke="#475569" stroke-width="1" />
+            </svg>
+          </div>
+          <span class="compass-bearing-label" id="compassBearingLabel">N</span>
+        </button>
+
         <!-- Campus Perimeter / Center Reset -->
         <button class="floating-btn" id="recenterBtn" title="Fit Campus Boundaries" aria-label="Recenter campus view">
           <i data-lucide="scan"></i>
@@ -374,6 +398,8 @@
   <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
   <!-- Leaflet.js CDN (v1.9.4) -->
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+  <!-- Leaflet-Rotate Plugin (Touch & Gesture Map Rotation) -->
+  <script src="js/leaflet-rotate.js"></script>
 
   <!-- Application Modules -->
   <script src="js/data.js"></script>

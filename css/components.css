@@ -570,6 +570,58 @@
   }
 }
 
+/* Map Top Right Group (Rotate buttons + Layer switch) */
+.map-top-right-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.rotate-btn-group {
+  display: flex;
+  background: var(--surface-card);
+  border: 1px solid var(--surface-border);
+  border-radius: var(--radius-full);
+  box-shadow: var(--shadow-md);
+  overflow: hidden;
+}
+
+.rotate-step-btn {
+  width: 38px;
+  height: 38px;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--surface-card);
+  color: var(--text-secondary);
+  border-radius: 0;
+  box-shadow: none;
+  border: none;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.rotate-step-btn:first-child {
+  border-right: 1px solid var(--surface-border);
+}
+
+.rotate-step-btn:hover {
+  background: var(--surface-bg);
+  color: var(--primary);
+}
+
+.rotate-step-btn svg {
+  width: 16px;
+  height: 16px;
+}
+
+@media (max-width: 480px) {
+  .rotate-btn-group {
+    display: none;
+  }
+}
+
 .layer-control-wrapper {
   position: relative;
   margin-left: auto;
@@ -799,6 +851,53 @@
 .floating-btn.active {
   color: var(--primary);
   border-color: var(--primary-subtle);
+}
+
+.floating-btn.fab-compass {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: var(--surface-card);
+  border-color: var(--surface-border);
+  padding: 0;
+}
+
+.compass-needle-wrapper {
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.12s cubic-bezier(0.2, 0, 0, 1);
+  transform-origin: center center;
+}
+
+.compass-svg {
+  width: 24px;
+  height: 24px;
+  filter: drop-shadow(0 1px 1.5px rgba(0, 0, 0, 0.25));
+}
+
+.compass-bearing-label {
+  font-size: 8px;
+  font-weight: 800;
+  line-height: 1;
+  color: var(--text-secondary);
+  margin-top: -3px;
+  font-family: monospace;
+}
+
+.floating-btn.fab-compass.rotated {
+  border-color: #3b82f6 !important;
+  background: #eff6ff !important;
+  box-shadow: 0 0 0 2.5px rgba(37, 99, 235, 0.25), var(--shadow-md) !important;
+}
+
+.floating-btn.fab-compass.rotated .compass-bearing-label {
+  color: #2563eb;
+  font-weight: 900;
 }
 
 .floating-btn.fab-dev {
