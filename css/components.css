@@ -900,6 +900,38 @@
   font-weight: 900;
 }
 
+/* Universal Undo Floating Action Button */
+.floating-btn.fab-undo {
+  color: var(--text-secondary);
+  transition: all var(--transition-fast);
+}
+
+.floating-btn.fab-undo.has-undo {
+  color: #ef4444;
+  border-color: #fca5a5;
+  background: #fef2f2;
+  box-shadow: 0 4px 12px rgba(239, 68, 68, 0.25);
+  animation: pulseUndo 2s infinite ease-in-out;
+}
+
+.floating-btn.fab-undo.has-undo:hover {
+  background: #fee2e2;
+  color: #dc2626;
+  transform: scale(1.08);
+}
+
+.floating-btn.fab-undo:disabled,
+.floating-btn.fab-undo.disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+@keyframes pulseUndo {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.4), var(--shadow-sm); }
+  50% { box-shadow: 0 0 0 5px rgba(239, 68, 68, 0), var(--shadow-sm); }
+}
+
 .floating-btn.fab-dev {
   background: var(--surface-card);
   color: #8b5cf6;
@@ -2107,6 +2139,39 @@
 .builder-action-btn svg {
   width: 14px;
   height: 14px;
+}
+
+.builder-action-btn.btn-undo {
+  background: rgba(239, 68, 68, 0.14);
+  border: 1px solid rgba(239, 68, 68, 0.35);
+  color: #fca5a5;
+  transition: all 0.2s ease;
+}
+
+.builder-action-btn.btn-undo:not(:disabled):hover {
+  background: rgba(239, 68, 68, 0.28);
+  color: #ffffff;
+  border-color: #ef4444;
+}
+
+.builder-action-btn.btn-undo:disabled,
+.builder-action-btn.btn-undo.disabled {
+  opacity: 0.38;
+  cursor: not-allowed;
+  background: rgba(255, 255, 255, 0.05);
+  border-color: rgba(255, 255, 255, 0.1);
+  color: #64748b;
+  pointer-events: none;
+}
+
+.undo-count-badge {
+  background: #ef4444;
+  color: #ffffff;
+  font-size: 9px;
+  font-weight: 800;
+  padding: 1px 5px;
+  border-radius: 9999px;
+  margin-left: 2px;
 }
 
 .builder-action-btn.btn-add {

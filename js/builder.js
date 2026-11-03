@@ -32,6 +32,11 @@ class CampusBuilder {
     this.fenceMarkers = [];
     this.tempPickMarker = null;
 
+    // Universal History & Undo/Redo Stacks
+    this.historyStack = [];
+    this.redoStack = [];
+    this.maxHistory = 50;
+
     // Available amenity suggestions for quick-toggle
     this.suggestedAmenities = [
       'Wi-Fi',
@@ -57,6 +62,7 @@ class CampusBuilder {
     this.injectBuilderUI();
     this.attachEventListeners();
     this.startGpsTracking();
+    this.updateUndoRedoUI();
     return this;
   }
 
@@ -132,6 +138,139 @@ class CampusBuilder {
   }
 
   /**
+   * Pushes a snapshot of current dataset before performing a mutation
+   * @param {string} description - Summary of the change
+   */
+  pushHistoryState(description = 'Change') {
+    if (this.historyStack.length >= this.maxHistory) {
+      this.historyStack.shift();
+    }
+
+    this.historyStack.push({
+      description,
+      landmarks: JSON.parse(JSON.stringify(this.landmarks)),
+      perimeter: JSON.parse(JSON.stringify(this.perimeter)),
+      timestamp: Date.now()
+    });
+
+    // Clear redo stack upon new mutation
+    this.redoStack = [];
+    this.updateUndoRedoUI();
+  }
+
+  /**
+   * Universal Undo: Reverts dataset to preceding snapshot
+   */
+  undo() {
+    if (this.historyStack.length === 0) {
+      this.app?.showToast('Nothing to undo');
+      return;
+    }
+
+    // Capture current state in redo stack
+    this.redoStack.push({
+      description: 'Pre-undo state',
+      landmarks: JSON.parse(JSON.stringify(this.landmarks)),
+      perimeter: JSON.parse(JSON.stringify(this.perimeter)),
+      timestamp: Date.now()
+    });
+
+    const previousState = this.historyStack.pop();
+    this.landmarks = previousState.landmarks;
+    this.perimeter = previousState.perimeter;
+
+    this.persistData();
+    this.syncGlobalDataset();
+
+    if (this.isFenceEditMode) {
+      this.renderFenceEditLayer();
+    }
+
+    if (this.activeEditingLandmark) {
+      const refreshed = this.landmarks.find(l => l.id === this.activeEditingLandmark.id);
+      if (refreshed) {
+        this.openLandmarkEditor(refreshed);
+      } else {
+        this.closeLandmarkEditor();
+      }
+    }
+
+    this.updateUndoRedoUI();
+    this.app?.showToast(`Undone: ${previousState.description}`);
+  }
+
+  /**
+   * Universal Redo: Re-applies undone state
+   */
+  redo() {
+    if (this.redoStack.length === 0) {
+      this.app?.showToast('Nothing to redo');
+      return;
+    }
+
+    this.historyStack.push({
+      description: 'Pre-redo state',
+      landmarks: JSON.parse(JSON.stringify(this.landmarks)),
+      perimeter: JSON.parse(JSON.stringify(this.perimeter)),
+      timestamp: Date.now()
+    });
+
+    const nextState = this.redoStack.pop();
+    this.landmarks = nextState.landmarks;
+    this.perimeter = nextState.perimeter;
+
+    this.persistData();
+    this.syncGlobalDataset();
+
+    if (this.isFenceEditMode) {
+      this.renderFenceEditLayer();
+    }
+
+    this.updateUndoRedoUI();
+    this.app?.showToast('Action redone');
+  }
+
+  /**
+   * Synchronizes Undo / Redo buttons and badges across the UI
+   */
+  updateUndoRedoUI() {
+    const undoBtn = document.getElementById('builderUndoBtn');
+    const undoCountPill = document.getElementById('builderUndoCount');
+    const floatingUndoBtn = document.getElementById('floatingUndoBtn');
+
+    const canUndo = this.historyStack.length > 0;
+    const lastAction = canUndo ? this.historyStack[this.historyStack.length - 1].description : '';
+
+    if (undoBtn) {
+      undoBtn.disabled = !canUndo;
+      undoBtn.classList.toggle('disabled', !canUndo);
+      undoBtn.setAttribute(
+        'title',
+        canUndo
+          ? `Undo: ${lastAction} (${this.historyStack.length} in history) [Ctrl+Z]`
+          : 'Nothing to undo'
+      );
+    }
+
+    if (undoCountPill) {
+      undoCountPill.textContent = this.historyStack.length > 0 ? this.historyStack.length : '';
+      undoCountPill.style.display = this.historyStack.length > 0 ? 'inline-block' : 'none';
+    }
+
+    if (floatingUndoBtn) {
+      floatingUndoBtn.disabled = !canUndo;
+      floatingUndoBtn.classList.toggle('has-undo', canUndo);
+      floatingUndoBtn.classList.toggle('disabled', !canUndo);
+      floatingUndoBtn.setAttribute(
+        'title',
+        canUndo
+          ? `Undo: ${lastAction} (${this.historyStack.length})`
+          : 'Nothing to undo'
+      );
+    }
+  }
+
+  /**
    * Injects the Builder UI elements into the DOM
    */
   injectBuilderUI() {
@@ -150,6 +289,13 @@ class CampusBuilder {
         </div>
 
         <div class="builder-toolbar-actions">
+          <!-- Universal Undo Button -->
+          <button class="builder-action-btn btn-undo disabled" id="builderUndoBtn" title="Nothing to undo (Ctrl+Z)" disabled>
+            <i data-lucide="undo-2"></i>
+            <span>Undo</span>
+            <span class="undo-count-badge" id="builderUndoCount" style="display:none;"></span>
+          </button>
+
           <!-- GPS Status Pill -->
           <button class="builder-pill-btn gps-pill" id="builderGpsPill" title="Tap to fly to current location">
             <i data-lucide="satellite"></i>
@@ -399,6 +545,38 @@ class CampusBuilder {
    * Attaches event listeners for builder actions
    */
   attachEventListeners() {
+    // Universal Undo Listeners
+    const undoBtn = document.getElementById('builderUndoBtn');
+    if (undoBtn) undoBtn.addEventListener('click', () => this.undo());
+
+    const floatingUndoBtn = document.getElementById('floatingUndoBtn');
+    if (floatingUndoBtn) floatingUndoBtn.addEventListener('click', () => this.undo());
+
+    // Keyboard Shortcuts for Universal Undo / Redo
+    document.addEventListener('keydown', (e) => {
+      // Don't intercept when user is typing in form inputs
+      if (
+        document.activeElement &&
+        (document.activeElement.tagName === 'INPUT' ||
+         document.activeElement.tagName === 'TEXTAREA' ||
+         document.activeElement.isContentEditable)
+      ) {
+        return;
+      }
+
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') {
+        e.preventDefault();
+        if (e.shiftKey) {
+          this.redo();
+        } else {
+          this.undo();
+        }
+      } else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'y') {
+        e.preventDefault();
+        this.redo();
+      }
+    });
+
     // Top Bar Actions
     const addBtn = document.getElementById('builderAddBuildingBtn');
     if (addBtn) addBtn.addEventListener('click', () => this.openQuickAddModal());
@@ -880,8 +1058,10 @@ class CampusBuilder {
 
     const existingIndex = this.landmarks.findIndex(l => l.id === landmarkId);
     if (existingIndex >= 0) {
+      this.pushHistoryState(`Edit ${name}`);
       this.landmarks[existingIndex] = landmarkData;
     } else {
+      this.pushHistoryState(`Add ${name}`);
       this.landmarks.unshift(landmarkData);
     }
 
@@ -900,7 +1080,9 @@ class CampusBuilder {
   deleteLandmark(landmarkId) {
     const idx = this.landmarks.findIndex(l => l.id === landmarkId);
     if (idx >= 0) {
-      const removed = this.landmarks.splice(idx, 1)[0];
+      const removed = this.landmarks[idx];
+      this.pushHistoryState(`Delete ${removed.name}`);
+      this.landmarks.splice(idx, 1);
       this.persistData();
       this.syncGlobalDataset();
       this.app?.showToast(`Deleted ${removed.name}`);
@@ -913,6 +1095,7 @@ class CampusBuilder {
   updateLandmarkCoords(landmarkId, newCoords) {
     const landmark = this.landmarks.find(l => l.id === landmarkId);
     if (landmark) {
+      this.pushHistoryState(`Move ${landmark.name}`);
       landmark.coords = [parseFloat(newCoords[0].toFixed(6)), parseFloat(newCoords[1].toFixed(6))];
       this.persistData();
       this.syncGlobalDataset();
@@ -1045,6 +1228,10 @@ class CampusBuilder {
 
       const marker = L.marker(pt, { icon: cornerIcon, draggable: true }).addTo(this.mapManager.map);
 
+      marker.on('dragstart', () => {
+        this.pushHistoryState(`Move fence corner #${index + 1}`);
+      });
+
       marker.on('dragend', (e) => {
         const newLatLng = e.target.getLatLng();
         this.perimeter[index] = [
@@ -1076,6 +1263,7 @@ class CampusBuilder {
    * Adds fence corner at current GPS
    */
   addFenceCornerAtGps() {
+    this.pushHistoryState(`Add fence corner #${this.perimeter.length + 1}`);
     const coords = this.currentGps || [
       this.mapManager.map.getCenter().lat,
       this.mapManager.map.getCenter().lng
@@ -1094,6 +1282,7 @@ class CampusBuilder {
    */
   undoLastFenceCorner() {
     if (this.perimeter.length > 0) {
+      this.pushHistoryState('Remove fence corner');
       this.perimeter.pop();
       this.persistData();
       this.syncGlobalDataset();
