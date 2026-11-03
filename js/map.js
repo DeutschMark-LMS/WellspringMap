@@ -169,9 +169,21 @@ class CampusMap {
 
     landmarks.forEach(landmark => {
       const icon = this.createMarkerIcon(landmark, landmark.id === this.selectedMarkerId);
-      const marker = L.marker(landmark.coords, { icon: icon, title: landmark.name });
+      const marker = L.marker(landmark.coords, { 
+        icon: icon, 
+        title: `${landmark.name} (Drag to move or tap to edit)`,
+        draggable: true
+      });
 
-      // Build popup content
+      // Drag event to update coordinates in builder mode
+      marker.on('dragend', (e) => {
+        const newLatLng = e.target.getLatLng();
+        if (window.campusBuilder) {
+          window.campusBuilder.updateLandmarkCoords(landmark.id, [newLatLng.lat, newLatLng.lng]);
+        }
+      });
+
+      // Build popup content with builder edit actions
       const categoryInfo = CATEGORIES[landmark.category] || CATEGORIES.administrative;
       const popupContent = `
         <div class="popup-mini-card">
@@ -181,20 +193,33 @@ class CampusMap {
               ${categoryInfo.label} &bull; ${landmark.code}
             </span>
             <h4 class="popup-mini-title">${landmark.name}</h4>
-            <button class="popup-mini-btn" onclick="window.campusApp.openBuildingDetail('${landmark.id}')">
-              View Details & Directions
-            </button>
+            <div class="popup-builder-actions">
+              <button class="popup-mini-btn btn-edit-poi" onclick="window.campusBuilder ? window.campusBuilder.openLandmarkEditor(CAMPUS_LANDMARKS.find(l => l.id === '${landmark.id}')) : window.campusApp.openBuildingDetail('${landmark.id}')">
+                ✏️ Edit Building & Photo
+              </button>
+              <button class="popup-mini-btn btn-snap-poi" onclick="window.campusBuilder && window.campusBuilder.snapLandmarkToGps('${landmark.id}')">
+                📍 Snap to My GPS
+              </button>
+            </div>
           </div>
         </div>
       `;
 
-      marker.bindPopup(popupContent, { maxWidth: 260, minWidth: 220 });
+      marker.bindPopup(popupContent, { maxWidth: 280, minWidth: 230 });
 
       // Click event
       marker.on('click', () => {
         this.selectMarker(landmark.id);
         if (window.campusApp) {
           window.campusApp.onLandmarkSelected(landmark.id);
+        }
+      });
+
+      // Double-click to open editor directly
+      marker.on('dblclick', (e) => {
+        L.DomEvent.stopPropagation(e);
+        if (window.campusBuilder) {
+          window.campusBuilder.openLandmarkEditor(landmark);
         }
       });
 

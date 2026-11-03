@@ -63,14 +63,14 @@ class CampusApp {
     this.mapManager = new CampusMap().init();
     this.searchManager = new CampusSearch(this.mapManager).init();
     this.navManager = new CampusNavigation(this.mapManager).init();
-    this.surveyor = new CampusSurveyor(this.mapManager, this).init();
+    this.builder = new CampusBuilder(this.mapManager, this).init();
 
     // Attach global instances for cross-module callbacks
     window.campusApp = this;
     window.campusMap = this.mapManager;
     window.campusSearch = this.searchManager;
     window.campusNavigation = this.navManager;
-    window.campusSurveyor = this.surveyor;
+    window.campusBuilder = this.builder;
 
     // 2. Setup UI listeners and components
     this.setupUIEvents();
@@ -113,6 +113,16 @@ class CampusApp {
     }
 
     // Detail Action Buttons
+    const detailEditBtn = document.getElementById('detailEditBuildingBtn');
+    if (detailEditBtn) {
+      detailEditBtn.addEventListener('click', () => {
+        if (this.activeLandmark && this.builder) {
+          this.closeBuildingDetail();
+          this.builder.openLandmarkEditor(this.activeLandmark);
+        }
+      });
+    }
+
     if (this.detailDirectionsBtn) {
       this.detailDirectionsBtn.addEventListener('click', () => {
         if (this.activeLandmark) {
@@ -276,7 +286,9 @@ class CampusApp {
         if (this.coordInspectorPanel) this.coordInspectorPanel.style.display = 'none';
         if (this.devModeBtn) this.devModeBtn.classList.remove('active');
         this.mapManager.toggleDevMode(false);
-        this.surveyor.toggleSurveyMode(true);
+        if (this.builder) {
+          this.builder.openQuickAddModal();
+        }
       });
     }
 
@@ -284,14 +296,18 @@ class CampusApp {
     const sidebarExportBtn = document.getElementById('sidebarExportBtn');
     if (sidebarExportBtn) {
       sidebarExportBtn.addEventListener('click', () => {
-        this.surveyor.exportDataset();
+        if (this.builder) {
+          this.builder.exportDataset();
+        }
       });
     }
 
     const inspectorExportBtn = document.getElementById('inspectorExportBtn');
     if (inspectorExportBtn) {
       inspectorExportBtn.addEventListener('click', () => {
-        this.surveyor.exportDataset();
+        if (this.builder) {
+          this.builder.exportDataset();
+        }
       });
     }
 

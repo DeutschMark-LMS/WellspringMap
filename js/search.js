@@ -263,6 +263,22 @@ class CampusSearch {
             </div>
             ${distanceBadge}
           </div>
+
+          <!-- Builder Quick Action Buttons -->
+          <div class="poi-card-builder-actions">
+            <button type="button" class="btn-card-action btn-card-edit" title="Edit Building & Photo" onclick="event.stopPropagation(); window.campusBuilder ? window.campusBuilder.openLandmarkEditor(CAMPUS_LANDMARKS.find(l => l.id === '${landmark.id}')) : window.campusApp.openBuildingDetail('${landmark.id}');">
+              <i data-lucide="edit-3"></i>
+              <span>Edit</span>
+            </button>
+            <button type="button" class="btn-card-action btn-card-snap" title="Snap to My GPS" onclick="event.stopPropagation(); window.campusBuilder && window.campusBuilder.snapLandmarkToGps('${landmark.id}');">
+              <i data-lucide="crosshair"></i>
+              <span>Snap GPS</span>
+            </button>
+            <button type="button" class="btn-card-action btn-card-locate" title="Locate on Map" onclick="event.stopPropagation(); window.campusMap.flyToLocation([${landmark.coords[0]}, ${landmark.coords[1]}], 18); window.campusMap.selectMarker('${landmark.id}');">
+              <i data-lucide="map-pin"></i>
+              <span>Locate</span>
+            </button>
+          </div>
         </article>
       `;
     }).join('');
@@ -284,10 +300,15 @@ class CampusSearch {
 
         // Select marker & fly to coordinate
         this.mapManager.selectMarker(landmarkId);
-        this.mapManager.flyToLocation(landmark.coords, 17);
+        this.mapManager.flyToLocation(landmark.coords, 18);
 
-        // Open detailed drawer
-        if (window.campusApp) {
+        // In builder mode, open Landmark Editor
+        if (window.campusBuilder) {
+          if (window.innerWidth <= 900 && window.campusApp) {
+            window.campusApp.closeMobileSidebar();
+          }
+          window.campusBuilder.openLandmarkEditor(landmark);
+        } else if (window.campusApp) {
           window.campusApp.openBuildingDetail(landmarkId);
         }
       };
